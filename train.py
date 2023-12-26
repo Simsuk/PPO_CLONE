@@ -5,8 +5,9 @@ from datetime import datetime
 
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 
-import gym
+import gymnasium as gym
 import roboschool
 
 from PPO import PPO
@@ -16,11 +17,11 @@ def train():
     print("============================================================================================")
 
     ####### initialize environment hyperparameters ######
-    env_name = "RoboschoolWalker2d-v1"
+    env_name = "Hopper-v4" #"RoboschoolWalker2d-v1"
 
     has_continuous_action_space = True  # continuous action space; else discrete
 
-    max_ep_len = 1000                   # max timesteps in one episode
+    max_ep_len = 2000                   # max timesteps in one episode
     max_training_timesteps = int(3e6)   # break training loop if timeteps > max_training_timesteps
 
     print_freq = max_ep_len * 10        # print avg reward in the interval (in num timesteps)
@@ -51,12 +52,13 @@ def train():
     print("training environment name : " + env_name)
 
     env = gym.make(env_name)
-
+    print(env.action_space.shape)
     # state space dimension
     state_dim = env.observation_space.shape[0]
 
     # action space dimension
     if has_continuous_action_space:
+        
         action_dim = env.action_space.shape[0]
     else:
         action_dim = env.action_space.n
@@ -164,18 +166,22 @@ def train():
     time_step = 0
     i_episode = 0
 
+    # variables for plotting
+    episode_rewards = []
+    episode_numbers = []
+
     # training loop
     while time_step <= max_training_timesteps:
 
-        state = env.reset()
+        state, info = env.reset()
         current_ep_reward = 0
 
         for t in range(1, max_ep_len+1):
 
             # select action with policy
             action = ppo_agent.select_action(state)
-            state, reward, done, _ = env.step(action)
-
+            # state, reward, done, _ = env.step(action)
+            state, reward, done, _, _  = env.step(action)
             # saving reward and is_terminals
             ppo_agent.buffer.rewards.append(reward)
             ppo_agent.buffer.is_terminals.append(done)
@@ -235,7 +241,15 @@ def train():
         log_running_reward += current_ep_reward
         log_running_episodes += 1
 
+        episode_rewards.append(current_ep_reward)
+        episode_numbers.append(i_episode)
+
         i_episode += 1
+
+        # print reward every 100 iterations
+        if i_episode % 100 == 0:
+            print("Reward at episode {}: {}".format(i_episode, current_ep_reward))
+            # plot the average reward per episode
 
     log_f.close()
     env.close()
@@ -247,15 +261,14 @@ def train():
     print("Finished training at (GMT) : ", end_time)
     print("Total training time  : ", end_time - start_time)
     print("============================================================================================")
+    plt.plot(episode_numbers, episode_rewards)
+    plt.xlabel('Episode')
+    plt.ylabel('Average Reward')
+    plt.title('Average Reward per Episode')
+    plt.show()
+
 
 
 if __name__ == '__main__':
 
     train()
-    
-    
-    
-    
-    
-    
-    
